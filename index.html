@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>手部受限活动留言</title>
     <style>
         /* 基础页面样式 */
@@ -12,8 +12,9 @@
             min-height: 100vh;
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow-x: hidden;
-            font-size: 18px; /* 全局基础字号放大 */
+            font-size: 18px;
+            overflow-x: auto;
+            overflow-y: auto;
         }
 
         h1 {
@@ -24,15 +25,24 @@
             position: relative;
             padding-top: 30px;
             pointer-events: none;
-            font-size: 60px; /* 标题进一步放大 */
+            font-size: 60px;
             margin-bottom: 50px;
+        }
+
+        /* 外层滚动容器：手机端可左右滑动 */
+        #boardWrap {
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         /* 留言板大容器 */
         #board {
             position: relative;
-            width: 100%;
-            height: 1500px; 
+            width: 1600px;
+            min-width: 100%;
+            height: 1500px;
         }
 
         /* 弹窗样式 (Modal) */
@@ -51,53 +61,90 @@
             padding: 35px;
             border-radius: 15px;
             width: 90%;
-            max-width: 500px; /* 弹窗稍微加宽以配合大字号 */
+            max-width: 500px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             text-align: center;
         }
 
-        .modal-content h2 { margin-top: 0; color: #ff6b6b; font-size: 30px; /* 弹窗标题放大 */ }
-        .modal-content input, .modal-content textarea {
+        .modal-content h2 {
+            margin-top: 0;
+            color: #ff6b6b;
+            font-size: 30px;
+        }
+
+        .modal-content input,
+        .modal-content textarea {
             width: 100%;
             padding: 12px;
             margin: 10px 0 18px 0;
             border: 2px solid #ddd;
             border-radius: 8px;
-            font-size: 18px; /* 输入框字号放大 */
+            font-size: 18px;
             box-sizing: border-box;
         }
-        .modal-content textarea { height: 120px; resize: none; }
+
+        .modal-content textarea {
+            height: 120px;
+            resize: none;
+        }
         
-        .btn-group { display: flex; gap: 12px; justify-content: center; }
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
         .btn {
-            background-color: #4facfe; color: white;
-            padding: 12px 30px; border: none; border-radius: 25px;
-            font-size: 20px; /* 按钮字号放大 */
-            cursor: pointer; transition: 0.3s; width: 100%;
+            background-color: #4facfe;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 20px;
+            cursor: pointer;
+            transition: 0.3s;
+            width: 100%;
             font-weight: bold;
         }
-        .btn-close { background-color: #ccc; }
-        .btn:hover { opacity: 0.8; transform: scale(1.05); }
 
-        /* 右下角悬浮按钮（超大号） */
+        .btn-close {
+            background-color: #ccc;
+        }
+
+        .btn:hover {
+            opacity: 0.8;
+            transform: scale(1.05);
+        }
+
+        /* 右下角悬浮按钮 */
         #addBtn {
-            position: fixed; right: 40px; bottom: 40px;
-            width: 85px; height: 85px; /* 按钮整体变大 */
+            position: fixed;
+            right: 40px;
+            bottom: 40px;
+            width: 85px;
+            height: 85px;
             border-radius: 50%;
-            background-color: #ff6b6b; color: white; 
-            font-size: 50px; /* 加号“+”变大 */
-            line-height: 85px; /* 确保加号垂直居中 */
+            background-color: #ff6b6b;
+            color: white;
+            font-size: 50px;
+            line-height: 85px;
             text-align: center;
-            border: none; box-shadow: 0 6px 20px rgba(255,107,107,0.6);
-            cursor: pointer; z-index: 900; transition: 0.3s;
+            border: none;
+            box-shadow: 0 6px 20px rgba(255,107,107,0.6);
+            cursor: pointer;
+            z-index: 900;
+            transition: 0.3s;
             padding: 0;
         }
-        #addBtn:hover { transform: scale(1.1) rotate(90deg); }
+
+        #addBtn:hover {
+            transform: scale(1.1) rotate(90deg);
+        }
 
         /* 便利贴样式 */
         .sticky-note {
             position: absolute;
-            width: 300px;  /* 配合大字体，便利贴宽度加宽 */
+            width: 300px;
             padding: 20px 25px;
             border-radius: 8px;
             box-shadow: 3px 5px 15px rgba(0,0,0,0.15);
@@ -107,7 +154,11 @@
             cursor: grab;
             user-select: none;
         }
-        .sticky-note:active { cursor: grabbing; }
+
+        .sticky-note:active {
+            cursor: grabbing;
+        }
+
         .sticky-note:hover {
             transform: scale(1.05) rotate(0deg);
             box-shadow: 5px 10px 20px rgba(0,0,0,0.3);
@@ -115,14 +166,19 @@
         }
         
         .note-header { 
-            font-weight: bold; margin-bottom: 12px; 
-            border-bottom: 2px dashed rgba(0,0,0,0.2); 
-            padding-bottom: 8px; 
-            font-size: 18px; /* 留言者名字放大 */
+            font-weight: bold;
+            margin-bottom: 12px;
+            border-bottom: 2px dashed rgba(0,0,0,0.2);
+            padding-bottom: 8px;
+            font-size: 18px;
         }
+
         .note-text { 
-            font-size: 20px; /* 核心留言内容放大 */
-            line-height: 1.6; word-wrap: break-word; margin-bottom: 15px;
+            font-size: 20px;
+            line-height: 1.6;
+            word-wrap: break-word;
+            margin-bottom: 15px;
+            white-space: pre-wrap;
         }
         
         /* 评论区样式 */
@@ -131,35 +187,97 @@
             border-radius: 5px;
             padding: 12px;
             margin-bottom: 15px;
-            font-size: 16px; /* 评论区字号放大 */
-            max-height: 150px; /* 评论区高度增加 */
+            font-size: 16px;
+            max-height: 150px;
             overflow-y: auto;
             cursor: default;
         }
-        .comment-item { margin-bottom: 8px; border-bottom: 1px dotted rgba(0,0,0,0.1); padding-bottom: 4px; }
-        .comment-user { font-weight: bold; color: #444; }
+
+        .comment-item {
+            margin-bottom: 8px;
+            border-bottom: 1px dotted rgba(0,0,0,0.1);
+            padding-bottom: 4px;
+            word-break: break-word;
+        }
+
+        .comment-user {
+            font-weight: bold;
+            color: #444;
+        }
 
         /* 底部操作区 */
         .note-footer {
-            margin-top: auto; display: flex; justify-content: space-between; align-items: center;
+            margin-top: auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         
-        .footer-left { display: flex; gap: 15px; align-items: center; }
-        
-        .like-btn, .comment-trigger {
-            background: none; border: none; 
-            font-size: 18px; /* 点赞和评论按钮放大 */
-            cursor: pointer; 
-            display: flex; align-items: center; gap: 5px; padding: 0; color: #333;
+        .footer-left {
+            display: flex;
+            gap: 15px;
+            align-items: center;
         }
-        .like-active { color: #e74c3c; }
+        
+        .like-btn,
+        .comment-trigger {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 0;
+            color: #333;
+        }
 
-        .action-btns { display: flex; gap: 8px; }
+        .like-active {
+            color: #e74c3c;
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 8px;
+        }
+
         .action-btn {
-            background: rgba(255,255,255,0.6); border: none; border-radius: 4px;
-            cursor: pointer; 
-            font-size: 16px; /* 修改和删除图标放大 */
+            background: rgba(255,255,255,0.6);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
             padding: 6px 10px;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 34px;
+                margin-bottom: 30px;
+                padding-top: 20px;
+            }
+
+            .sticky-note {
+                width: 260px;
+                padding: 16px 18px;
+            }
+
+            .note-text {
+                font-size: 18px;
+            }
+
+            .note-header {
+                font-size: 16px;
+            }
+
+            #addBtn {
+                right: 20px;
+                bottom: 20px;
+                width: 72px;
+                height: 72px;
+                line-height: 72px;
+                font-size: 42px;
+            }
         }
     </style>
 </head>
@@ -167,7 +285,9 @@
 
     <h1>✨ 手部受限活动留言 ✨</h1>
     
-    <div id="board"></div>
+    <div id="boardWrap">
+        <div id="board"></div>
+    </div>
 
     <button id="addBtn" onclick="openModal()">+</button>
 
@@ -194,6 +314,7 @@
         const nameInput = document.getElementById('userNameInput');
         const deptInput = document.getElementById('userDeptInput');
         const msgInput = document.getElementById('userMessageInput');
+        const board = document.getElementById('board');
 
         window.onload = function() {
             renderMessages();
@@ -228,8 +349,8 @@
                 dept: dept,
                 text: text,
                 color: colors[Math.floor(Math.random() * colors.length)],
-                top: Math.random() * 2200 + 'px', 
-                left: Math.random() * 70 + 5 + '%', 
+                top: Math.floor(Math.random() * 1300) + 'px',
+                left: Math.floor(Math.random() * 900 + 80) + 'px',
                 rotation: Math.random() * 20 - 10,
                 likes: [],
                 comments: []
@@ -243,17 +364,27 @@
         }
 
         function toggleLike(id) {
-            if (!currentUser) { alert("请先填写名字！"); openModal(); return; }
+            if (!currentUser) {
+                alert("请先填写名字！");
+                openModal();
+                return;
+            }
+
             const msg = messages.find(m => m.id === id);
             if (msg) {
                 const idx = msg.likes.indexOf(currentUser);
                 idx === -1 ? msg.likes.push(currentUser) : msg.likes.splice(idx, 1);
-                saveData(); renderMessages();
+                saveData();
+                renderMessages();
             }
         }
 
         function addComment(id) {
-            if (!currentUser) { alert("请先填写名字！"); openModal(); return; }
+            if (!currentUser) {
+                alert("请先填写名字！");
+                openModal();
+                return;
+            }
             
             const commentText = prompt("请输入你的评论：");
             if (commentText && commentText.trim()) {
@@ -270,7 +401,6 @@
         }
 
         function renderMessages() {
-            const board = document.getElementById('board');
             board.innerHTML = '';
 
             messages.forEach(msg => {
@@ -289,7 +419,7 @@
                 if (msg.comments && msg.comments.length > 0) {
                     commentsHtml = '<div class="comments-section" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">';
                     msg.comments.forEach(c => {
-                        commentsHtml += `<div class="comment-item"><span class="comment-user">${c.user}:</span> ${c.text}</div>`;
+                        commentsHtml += `<div class="comment-item"><span class="comment-user">${escapeHtml(c.user)}:</span> ${escapeHtml(c.text)}</div>`;
                     });
                     commentsHtml += '</div>';
                 }
@@ -305,8 +435,8 @@
                 }
 
                 note.innerHTML = `
-                    <div class="note-header">👤 ${msg.name} <span style="color:#666; font-weight:normal; font-size:14px;">(${msg.dept})</span></div>
-                    <div class="note-text">${msg.text}</div>
+                    <div class="note-header">👤 ${escapeHtml(msg.name)} <span style="color:#666; font-weight:normal; font-size:14px;">(${escapeHtml(msg.dept)})</span></div>
+                    <div class="note-text">${escapeHtml(msg.text)}</div>
                     ${commentsHtml}
                     <div class="note-footer">
                         <div class="footer-left">
@@ -329,7 +459,8 @@
         function deleteMessage(id) {
             if (confirm("确定要删除这条留言吗？")) {
                 messages = messages.filter(msg => msg.id !== id);
-                saveData(); renderMessages();
+                saveData();
+                renderMessages();
             }
         }
 
@@ -337,7 +468,11 @@
             const newText = prompt("修改留言内容：");
             if (newText && newText.trim()) {
                 const msg = messages.find(m => m.id === id);
-                if (msg) { msg.text = newText.trim(); saveData(); renderMessages(); }
+                if (msg) {
+                    msg.text = newText.trim();
+                    saveData();
+                    renderMessages();
+                }
             }
         }
 
@@ -350,14 +485,14 @@
             let startX, startY, initialLeft, initialTop;
 
             element.addEventListener('mousedown', dragStart);
-            element.addEventListener('touchstart', dragStart, {passive: false});
+            element.addEventListener('touchstart', dragStart, { passive: false });
 
             function dragStart(e) {
                 if (e.target.closest('button') || e.target.closest('.comments-section')) return;
 
                 isDragging = true;
                 element.style.zIndex = 1000;
-                element.style.transform = "scale(1.05) rotate(0deg)"; 
+                element.style.transform = "scale(1.05) rotate(0deg)";
 
                 if (e.type === 'touchstart') {
                     startX = e.touches[0].clientX;
@@ -371,14 +506,14 @@
                 initialTop = element.offsetTop;
 
                 document.addEventListener('mousemove', drag);
-                document.addEventListener('touchmove', drag, {passive: false});
+                document.addEventListener('touchmove', drag, { passive: false });
                 document.addEventListener('mouseup', dragEnd);
                 document.addEventListener('touchend', dragEnd);
             }
 
             function drag(e) {
                 if (!isDragging) return;
-                if (e.type === 'touchmove') e.preventDefault(); 
+                if (e.type === 'touchmove') e.preventDefault();
 
                 let currentX, currentY;
                 if (e.type === 'touchmove') {
@@ -396,13 +531,13 @@
                 element.style.top = (initialTop + dy) + 'px';
             }
 
-            function dragEnd(e) {
+            function dragEnd() {
                 if (!isDragging) return;
                 isDragging = false;
                 
-                element.style.zIndex = ''; 
+                element.style.zIndex = '';
                 const msg = messages.find(m => m.id === messageId);
-                if(msg) element.style.transform = `rotate(${msg.rotation}deg)`;
+                if (msg) element.style.transform = `rotate(${msg.rotation}deg)`;
 
                 document.removeEventListener('mousemove', drag);
                 document.removeEventListener('touchmove', drag);
@@ -415,6 +550,15 @@
                     saveData();
                 }
             }
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
         }
     </script>
 </body>

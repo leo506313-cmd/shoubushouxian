@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>手部受限活动留言</title>
+    <style>
+        /* 基础页面样式 */
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+            font-size: 18px; /* 全局基础字号放大 */
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            text-shadow: 2px 2px 4px rgba(255,255,255,0.5);
+            z-index: 10;
+            position: relative;
+            padding-top: 30px;
+            pointer-events: none;
+            font-size: 60px; /* 标题进一步放大 */
+            margin-bottom: 50px;
+        }
+
+        /* 留言板大容器 */
+        #board {
+            position: relative;
+            width: 100%;
+            height: 2500px; 
+        }
+
+        /* 弹窗样式 (Modal) */
+        #myModal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.6);
+            z-index: 1500;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 35px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px; /* 弹窗稍微加宽以配合大字号 */
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+
+        .modal-content h2 { margin-top: 0; color: #ff6b6b; font-size: 30px; /* 弹窗标题放大 */ }
+        .modal-content input, .modal-content textarea {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0 18px 0;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 18px; /* 输入框字号放大 */
+            box-sizing: border-box;
+        }
+        .modal-content textarea { height: 120px; resize: none; }
+        
+        .btn-group { display: flex; gap: 12px; justify-content: center; }
+        .btn {
+            background-color: #4facfe; color: white;
+            padding: 12px 30px; border: none; border-radius: 25px;
+            font-size: 20px; /* 按钮字号放大 */
+            cursor: pointer; transition: 0.3s; width: 100%;
+            font-weight: bold;
+        }
+        .btn-close { background-color: #ccc; }
+        .btn:hover { opacity: 0.8; transform: scale(1.05); }
+
+        /* 右下角悬浮按钮（超大号） */
+        #addBtn {
+            position: fixed; right: 40px; bottom: 40px;
+            width: 85px; height: 85px; /* 按钮整体变大 */
+            border-radius: 50%;
+            background-color: #ff6b6b; color: white; 
+            font-size: 50px; /* 加号“+”变大 */
+            line-height: 85px; /* 确保加号垂直居中 */
+            text-align: center;
+            border: none; box-shadow: 0 6px 20px rgba(255,107,107,0.6);
+            cursor: pointer; z-index: 900; transition: 0.3s;
+            padding: 0;
+        }
+        #addBtn:hover { transform: scale(1.1) rotate(90deg); }
+
+        /* 便利贴样式 */
+        .sticky-note {
+            position: absolute;
+            width: 300px;  /* 配合大字体，便利贴宽度加宽 */
+            padding: 20px 25px;
+            border-radius: 8px;
+            box-shadow: 3px 5px 15px rgba(0,0,0,0.15);
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+            cursor: grab;
+            user-select: none;
+        }
+        .sticky-note:active { cursor: grabbing; }
+        .sticky-note:hover {
+            transform: scale(1.05) rotate(0deg);
+            box-shadow: 5px 10px 20px rgba(0,0,0,0.3);
+            z-index: 100;
+        }
+        
+        .note-header { 
+            font-weight: bold; margin-bottom: 12px; 
+            border-bottom: 2px dashed rgba(0,0,0,0.2); 
+            padding-bottom: 8px; 
+            font-size: 18px; /* 留言者名字放大 */
+        }
+        .note-text { 
+            font-size: 20px; /* 核心留言内容放大 */
+            line-height: 1.6; word-wrap: break-word; margin-bottom: 15px;
+        }
+        
+        /* 评论区样式 */
+        .comments-section {
+            background: rgba(255,255,255,0.5);
+            border-radius: 5px;
+            padding: 12px;
+            margin-bottom: 15px;
+            font-size: 16px; /* 评论区字号放大 */
+            max-height: 150px; /* 评论区高度增加 */
+            overflow-y: auto;
+            cursor: default;
+        }
+        .comment-item { margin-bottom: 8px; border-bottom: 1px dotted rgba(0,0,0,0.1); padding-bottom: 4px; }
+        .comment-user { font-weight: bold; color: #444; }
+
+        /* 底部操作区 */
+        .note-footer {
+            margin-top: auto; display: flex; justify-content: space-between; align-items: center;
+        }
+        
+        .footer-left { display: flex; gap: 15px; align-items: center; }
+        
+        .like-btn, .comment-trigger {
+            background: none; border: none; 
+            font-size: 18px; /* 点赞和评论按钮放大 */
+            cursor: pointer; 
+            display: flex; align-items: center; gap: 5px; padding: 0; color: #333;
+        }
+        .like-active { color: #e74c3c; }
+
+        .action-btns { display: flex; gap: 8px; }
+        .action-btn {
+            background: rgba(255,255,255,0.6); border: none; border-radius: 4px;
+            cursor: pointer; 
+            font-size: 16px; /* 修改和删除图标放大 */
+            padding: 6px 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>✨ 手部受限活动留言 ✨</h1>
+    
+    <div id="board"></div>
+
+    <button id="addBtn" onclick="openModal()">+</button>
+
+    <div id="myModal">
+        <div class="modal-content">
+            <h2 id="modalTitle">留下你的足迹</h2>
+            <input type="text" id="userNameInput" placeholder="你的名字 (必填)">
+            <input type="text" id="userDeptInput" placeholder="所属部门 (必填)">
+            <textarea id="userMessageInput" placeholder="写下你想说的话..."></textarea>
+            <div class="btn-group">
+                <button class="btn btn-close" onclick="closeModal()">取消</button>
+                <button class="btn" onclick="submitMessage()">贴上留言</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let messages = JSON.parse(localStorage.getItem('color_messages_v4')) || [];
+        let currentUser = localStorage.getItem('current_user') || "";
+        
+        const colors = ['#ff9a9e', '#fecfef', '#a1c4fd', '#fdcbf1', '#e0c3fc', '#8fd3f4', '#f6d365', '#fda085'];
+
+        const modal = document.getElementById('myModal');
+        const nameInput = document.getElementById('userNameInput');
+        const deptInput = document.getElementById('userDeptInput');
+        const msgInput = document.getElementById('userMessageInput');
+
+        window.onload = function() {
+            renderMessages();
+            if (!currentUser) openModal();
+        }
+
+        function openModal() {
+            if (currentUser) nameInput.value = currentUser;
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            modal.style.display = 'none';
+        }
+
+        function submitMessage() {
+            const name = nameInput.value.trim();
+            const dept = deptInput.value.trim();
+            const text = msgInput.value.trim();
+
+            if (!name || !dept || !text) {
+                alert("请填全所有信息哦！");
+                return;
+            }
+
+            currentUser = name;
+            localStorage.setItem('current_user', currentUser);
+
+            const newMessage = {
+                id: Date.now(),
+                name: name,
+                dept: dept,
+                text: text,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                top: Math.random() * 2200 + 'px', 
+                left: Math.random() * 70 + 5 + '%', 
+                rotation: Math.random() * 20 - 10,
+                likes: [],
+                comments: []
+            };
+
+            messages.push(newMessage);
+            saveData();
+            msgInput.value = '';
+            closeModal();
+            renderMessages();
+        }
+
+        function toggleLike(id) {
+            if (!currentUser) { alert("请先填写名字！"); openModal(); return; }
+            const msg = messages.find(m => m.id === id);
+            if (msg) {
+                const idx = msg.likes.indexOf(currentUser);
+                idx === -1 ? msg.likes.push(currentUser) : msg.likes.splice(idx, 1);
+                saveData(); renderMessages();
+            }
+        }
+
+        function addComment(id) {
+            if (!currentUser) { alert("请先填写名字！"); openModal(); return; }
+            
+            const commentText = prompt("请输入你的评论：");
+            if (commentText && commentText.trim()) {
+                const msg = messages.find(m => m.id === id);
+                if (msg) {
+                    msg.comments.push({
+                        user: currentUser,
+                        text: commentText.trim()
+                    });
+                    saveData();
+                    renderMessages();
+                }
+            }
+        }
+
+        function renderMessages() {
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+
+            messages.forEach(msg => {
+                let note = document.createElement('div');
+                note.className = 'sticky-note';
+                note.style.backgroundColor = msg.color;
+                note.style.top = msg.top;
+                note.style.left = msg.left;
+                note.style.transform = `rotate(${msg.rotation}deg)`;
+                
+                const likesCount = msg.likes.length;
+                const hasLiked = msg.likes.includes(currentUser);
+                const commentsCount = msg.comments ? msg.comments.length : 0;
+
+                let commentsHtml = '';
+                if (msg.comments && msg.comments.length > 0) {
+                    commentsHtml = '<div class="comments-section" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">';
+                    msg.comments.forEach(c => {
+                        commentsHtml += `<div class="comment-item"><span class="comment-user">${c.user}:</span> ${c.text}</div>`;
+                    });
+                    commentsHtml += '</div>';
+                }
+
+                let actionHtml = '';
+                if (msg.name === currentUser) {
+                    actionHtml = `
+                        <div class="action-btns">
+                            <button class="action-btn" onclick="editMessage(${msg.id})">✏️</button>
+                            <button class="action-btn" onclick="deleteMessage(${msg.id})">🗑️</button>
+                        </div>
+                    `;
+                }
+
+                note.innerHTML = `
+                    <div class="note-header">👤 ${msg.name} <span style="color:#666; font-weight:normal; font-size:14px;">(${msg.dept})</span></div>
+                    <div class="note-text">${msg.text}</div>
+                    ${commentsHtml}
+                    <div class="note-footer">
+                        <div class="footer-left">
+                            <button class="like-btn ${hasLiked ? 'like-active' : ''}" onclick="toggleLike(${msg.id})">
+                                ${hasLiked ? '❤️' : '🤍'} ${likesCount}
+                            </button>
+                            <button class="comment-trigger" onclick="addComment(${msg.id})">
+                                💬 ${commentsCount}
+                            </button>
+                        </div>
+                        ${actionHtml}
+                    </div>
+                `;
+                
+                makeDraggable(note, msg.id);
+                board.appendChild(note);
+            });
+        }
+
+        function deleteMessage(id) {
+            if (confirm("确定要删除这条留言吗？")) {
+                messages = messages.filter(msg => msg.id !== id);
+                saveData(); renderMessages();
+            }
+        }
+
+        function editMessage(id) {
+            const newText = prompt("修改留言内容：");
+            if (newText && newText.trim()) {
+                const msg = messages.find(m => m.id === id);
+                if (msg) { msg.text = newText.trim(); saveData(); renderMessages(); }
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem('color_messages_v4', JSON.stringify(messages));
+        }
+
+        function makeDraggable(element, messageId) {
+            let isDragging = false;
+            let startX, startY, initialLeft, initialTop;
+
+            element.addEventListener('mousedown', dragStart);
+            element.addEventListener('touchstart', dragStart, {passive: false});
+
+            function dragStart(e) {
+                if (e.target.closest('button') || e.target.closest('.comments-section')) return;
+
+                isDragging = true;
+                element.style.zIndex = 1000;
+                element.style.transform = "scale(1.05) rotate(0deg)"; 
+
+                if (e.type === 'touchstart') {
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                } else {
+                    startX = e.clientX;
+                    startY = e.clientY;
+                }
+
+                initialLeft = element.offsetLeft;
+                initialTop = element.offsetTop;
+
+                document.addEventListener('mousemove', drag);
+                document.addEventListener('touchmove', drag, {passive: false});
+                document.addEventListener('mouseup', dragEnd);
+                document.addEventListener('touchend', dragEnd);
+            }
+
+            function drag(e) {
+                if (!isDragging) return;
+                if (e.type === 'touchmove') e.preventDefault(); 
+
+                let currentX, currentY;
+                if (e.type === 'touchmove') {
+                    currentX = e.touches[0].clientX;
+                    currentY = e.touches[0].clientY;
+                } else {
+                    currentX = e.clientX;
+                    currentY = e.clientY;
+                }
+
+                let dx = currentX - startX;
+                let dy = currentY - startY;
+
+                element.style.left = (initialLeft + dx) + 'px';
+                element.style.top = (initialTop + dy) + 'px';
+            }
+
+            function dragEnd(e) {
+                if (!isDragging) return;
+                isDragging = false;
+                
+                element.style.zIndex = ''; 
+                const msg = messages.find(m => m.id === messageId);
+                if(msg) element.style.transform = `rotate(${msg.rotation}deg)`;
+
+                document.removeEventListener('mousemove', drag);
+                document.removeEventListener('touchmove', drag);
+                document.removeEventListener('mouseup', dragEnd);
+                document.removeEventListener('touchend', dragEnd);
+
+                if (msg) {
+                    msg.left = element.style.left;
+                    msg.top = element.style.top;
+                    saveData();
+                }
+            }
+        }
+    </script>
+</body>
+</html>

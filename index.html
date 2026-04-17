@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>手部受限活动留言</title>
     <style>
-        /* 基础页面样式 */
         body {
             margin: 0;
             padding: 0;
@@ -29,7 +28,6 @@
             margin-bottom: 50px;
         }
 
-        /* 外层滚动容器：手机端可左右滑动 */
         #boardWrap {
             width: 100%;
             overflow-x: auto;
@@ -37,7 +35,6 @@
             -webkit-overflow-scrolling: touch;
         }
 
-        /* 留言板大容器 */
         #board {
             position: relative;
             width: 1600px;
@@ -45,7 +42,6 @@
             height: 1500px;
         }
 
-        /* 弹窗样式 (Modal) */
         #myModal {
             display: none;
             position: fixed;
@@ -116,7 +112,6 @@
             transform: scale(1.05);
         }
 
-        /* 右下角悬浮按钮 */
         #addBtn {
             position: fixed;
             right: 40px;
@@ -141,7 +136,6 @@
             transform: scale(1.1) rotate(90deg);
         }
 
-        /* 便利贴样式 */
         .sticky-note {
             position: absolute;
             width: 300px;
@@ -181,7 +175,6 @@
             white-space: pre-wrap;
         }
         
-        /* 评论区样式 */
         .comments-section {
             background: rgba(255,255,255,0.5);
             border-radius: 5px;
@@ -205,7 +198,6 @@
             color: #444;
         }
 
-        /* 底部操作区 */
         .note-footer {
             margin-top: auto;
             display: flex;
@@ -250,6 +242,13 @@
             padding: 6px 10px;
         }
 
+        .empty-tip {
+            text-align: center;
+            color: #666;
+            font-size: 24px;
+            margin-top: 100px;
+        }
+
         @media (max-width: 768px) {
             h1 {
                 font-size: 34px;
@@ -282,9 +281,8 @@
     </style>
 </head>
 <body>
-
     <h1>✨ 手部受限活动留言 ✨</h1>
-    
+
     <div id="boardWrap">
         <div id="board"></div>
     </div>
@@ -294,8 +292,8 @@
     <div id="myModal">
         <div class="modal-content">
             <h2 id="modalTitle">留下你的足迹</h2>
-            <input type="text" id="userNameInput" placeholder="你的名字 (必填)">
-            <input type="text" id="userDeptInput" placeholder="所属部门 (必填)">
+            <input type="text" id="userNameInput" placeholder="你的名字（必填）" />
+            <input type="text" id="userDeptInput" placeholder="所属部门（必填）" />
             <textarea id="userMessageInput" placeholder="写下你想说的话..."></textarea>
             <div class="btn-group">
                 <button class="btn btn-close" onclick="closeModal()">取消</button>
@@ -304,30 +302,79 @@
         </div>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
     <script>
-        let messages = JSON.parse(localStorage.getItem('color_messages_v4')) || [];
-        let currentUser = localStorage.getItem('current_user') || "";
-        
-        const colors = ['#ff9a9e', '#fecfef', '#a1c4fd', '#fdcbf1', '#e0c3fc', '#8fd3f4', '#f6d365', '#fda085'];
+        const firebaseConfig = {
+            apiKey: "AIzaSyBLxME8s4RCB-AMZ5NeuRAlFJF5fSKhNpA",
+            authDomain: "shoubuhsouxian.firebaseapp.com",
+            databaseURL: "https://shoubuhsouxian-default-rtdb.firebaseio.com",
+            projectId: "shoubuhsouxian",
+            storageBucket: "shoubuhsouxian.firebasestorage.app",
+            messagingSenderId: "1059852842523",
+            appId: "1:1059852842523:web:4eb41745c5b59ffffeeabe",
+            measurementId: "G-NZC53QYRQY"
+        };
 
-        const modal = document.getElementById('myModal');
-        const nameInput = document.getElementById('userNameInput');
-        const deptInput = document.getElementById('userDeptInput');
-        const msgInput = document.getElementById('userMessageInput');
-        const board = document.getElementById('board');
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const messagesRef = db.ref("messages");
 
-        window.onload = function() {
-            renderMessages();
-            if (!currentUser) openModal();
+        const colors = [
+            "#ff9a9e", "#fecfef", "#a1c4fd", "#fdcbf1",
+            "#e0c3fc", "#8fd3f4", "#f6d365", "#fda085"
+        ];
+
+        const modal = document.getElementById("myModal");
+        const nameInput = document.getElementById("userNameInput");
+        const deptInput = document.getElementById("userDeptInput");
+        const msgInput = document.getElementById("userMessageInput");
+        const board = document.getElementById("board");
+
+        let messages = [];
+        let currentUser = localStorage.getItem("current_user") || "";
+        let currentDept = localStorage.getItem("current_dept") || "";
+        let currentUserId = localStorage.getItem("current_user_id") || "";
+
+        if (!currentUserId) {
+            currentUserId = "user_" + Date.now() + "_" + Math.random().toString(36).slice(2, 10);
+            localStorage.setItem("current_user_id", currentUserId);
         }
+
+        window.onload = function () {
+            if (currentUser) nameInput.value = currentUser;
+            if (currentDept) deptInput.value = currentDept;
+        };
+
+        messagesRef.on("value", function (snapshot) {
+            const data = snapshot.val() || {};
+            messages = Object.keys(data).map(key => ({
+                id: key,
+                ...data[key]
+            }));
+
+            messages.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            renderMessages();
+        });
 
         function openModal() {
             if (currentUser) nameInput.value = currentUser;
-            modal.style.display = 'flex';
+            if (currentDept) deptInput.value = currentDept;
+            modal.style.display = "flex";
         }
 
         function closeModal() {
-            modal.style.display = 'none';
+            modal.style.display = "none";
+        }
+
+        function ensureIdentity() {
+            if (!currentUser || !currentDept) {
+                alert("请先填写你的名字和部门。");
+                openModal();
+                return false;
+            }
+            return true;
         }
 
         function submitMessage() {
@@ -341,160 +388,182 @@
             }
 
             currentUser = name;
-            localStorage.setItem('current_user', currentUser);
+            currentDept = dept;
+            localStorage.setItem("current_user", currentUser);
+            localStorage.setItem("current_dept", currentDept);
 
             const newMessage = {
-                id: Date.now(),
+                ownerId: currentUserId,
                 name: name,
                 dept: dept,
                 text: text,
                 color: colors[Math.floor(Math.random() * colors.length)],
-                top: Math.floor(Math.random() * 1300) + 'px',
-                left: Math.floor(Math.random() * 900 + 80) + 'px',
-                rotation: Math.random() * 20 - 10,
-                likes: [],
-                comments: []
+                top: Math.floor(Math.random() * 1300) + "px",
+                left: Math.floor(Math.random() * 900 + 80) + "px",
+                rotation: (Math.random() * 20 - 10).toFixed(2),
+                createdAt: Date.now(),
+                likes: {},
+                comments: {}
             };
 
-            messages.push(newMessage);
-            saveData();
-            msgInput.value = '';
-            closeModal();
-            renderMessages();
+            messagesRef.push(newMessage)
+                .then(() => {
+                    msgInput.value = "";
+                    closeModal();
+                })
+                .catch(err => {
+                    alert("留言提交失败：" + err.message);
+                });
         }
 
-        function toggleLike(id) {
-            if (!currentUser) {
-                alert("请先填写名字！");
-                openModal();
-                return;
-            }
+        function toggleLike(messageId) {
+            if (!ensureIdentity()) return;
 
-            const msg = messages.find(m => m.id === id);
-            if (msg) {
-                const idx = msg.likes.indexOf(currentUser);
-                idx === -1 ? msg.likes.push(currentUser) : msg.likes.splice(idx, 1);
-                saveData();
-                renderMessages();
-            }
-        }
-
-        function addComment(id) {
-            if (!currentUser) {
-                alert("请先填写名字！");
-                openModal();
-                return;
-            }
-            
-            const commentText = prompt("请输入你的评论：");
-            if (commentText && commentText.trim()) {
-                const msg = messages.find(m => m.id === id);
-                if (msg) {
-                    msg.comments.push({
-                        user: currentUser,
-                        text: commentText.trim()
+            const likeRef = messagesRef.child(messageId).child("likes").child(currentUserId);
+            likeRef.once("value", function (snapshot) {
+                if (snapshot.exists()) {
+                    likeRef.remove();
+                } else {
+                    likeRef.set({
+                        userId: currentUserId,
+                        name: currentUser,
+                        dept: currentDept
                     });
-                    saveData();
-                    renderMessages();
                 }
+            });
+        }
+
+        function addComment(messageId) {
+            if (!ensureIdentity()) return;
+
+            const commentText = prompt("请输入你的评论：");
+            if (!commentText || !commentText.trim()) return;
+
+            messagesRef.child(messageId).child("comments").push({
+                userId: currentUserId,
+                user: currentUser,
+                dept: currentDept,
+                text: commentText.trim(),
+                createdAt: Date.now()
+            });
+        }
+
+        function deleteMessage(messageId) {
+            const msg = messages.find(m => m.id === messageId);
+            if (!msg) return;
+
+            if (msg.ownerId !== currentUserId) {
+                alert("只能删除自己发布的留言。");
+                return;
             }
+
+            if (confirm("确定要删除这条留言吗？")) {
+                messagesRef.child(messageId).remove();
+            }
+        }
+
+        function editMessage(messageId) {
+            const msg = messages.find(m => m.id === messageId);
+            if (!msg) return;
+
+            if (msg.ownerId !== currentUserId) {
+                alert("只能修改自己发布的留言。");
+                return;
+            }
+
+            const newText = prompt("修改留言内容：", msg.text || "");
+            if (!newText || !newText.trim()) return;
+
+            messagesRef.child(messageId).update({
+                text: newText.trim()
+            });
         }
 
         function renderMessages() {
-            board.innerHTML = '';
+            board.innerHTML = "";
+
+            if (!messages.length) {
+                const empty = document.createElement("div");
+                empty.className = "empty-tip";
+                empty.textContent = "还没有留言，来写下第一条吧～";
+                board.appendChild(empty);
+                return;
+            }
 
             messages.forEach(msg => {
-                let note = document.createElement('div');
-                note.className = 'sticky-note';
-                note.style.backgroundColor = msg.color;
-                note.style.top = msg.top;
-                note.style.left = msg.left;
-                note.style.transform = `rotate(${msg.rotation}deg)`;
-                
-                const likesCount = msg.likes.length;
-                const hasLiked = msg.likes.includes(currentUser);
-                const commentsCount = msg.comments ? msg.comments.length : 0;
+                const note = document.createElement("div");
+                note.className = "sticky-note";
+                note.style.backgroundColor = msg.color || "#fff3a3";
+                note.style.top = msg.top || "100px";
+                note.style.left = msg.left || "80px";
+                note.style.transform = `rotate(${msg.rotation || 0}deg)`;
 
-                let commentsHtml = '';
-                if (msg.comments && msg.comments.length > 0) {
+                const likesObj = msg.likes || {};
+                const likesCount = Object.keys(likesObj).length;
+                const hasLiked = !!likesObj[currentUserId];
+
+                const commentsObj = msg.comments || {};
+                const comments = Object.keys(commentsObj)
+                    .map(key => commentsObj[key])
+                    .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+                const commentsCount = comments.length;
+
+                let commentsHtml = "";
+                if (comments.length > 0) {
                     commentsHtml = '<div class="comments-section" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">';
-                    msg.comments.forEach(c => {
-                        commentsHtml += `<div class="comment-item"><span class="comment-user">${escapeHtml(c.user)}:</span> ${escapeHtml(c.text)}</div>`;
+                    comments.forEach(c => {
+                        commentsHtml += `<div class="comment-item"><span class="comment-user">${escapeHtml(c.user || "匿名")}：</span>${escapeHtml(c.text || "")}</div>`;
                     });
-                    commentsHtml += '</div>';
+                    commentsHtml += "</div>";
                 }
 
-                let actionHtml = '';
-                if (msg.name === currentUser) {
+                let actionHtml = "";
+                if (msg.ownerId === currentUserId) {
                     actionHtml = `
                         <div class="action-btns">
-                            <button class="action-btn" onclick="editMessage(${msg.id})">✏️</button>
-                            <button class="action-btn" onclick="deleteMessage(${msg.id})">🗑️</button>
+                            <button class="action-btn" onclick="editMessage('${msg.id}')">✏️</button>
+                            <button class="action-btn" onclick="deleteMessage('${msg.id}')">🗑️</button>
                         </div>
                     `;
                 }
 
                 note.innerHTML = `
-                    <div class="note-header">👤 ${escapeHtml(msg.name)} <span style="color:#666; font-weight:normal; font-size:14px;">(${escapeHtml(msg.dept)})</span></div>
-                    <div class="note-text">${escapeHtml(msg.text)}</div>
+                    <div class="note-header">👤 ${escapeHtml(msg.name || "")} <span style="color:#666; font-weight:normal; font-size:14px;">(${escapeHtml(msg.dept || "")})</span></div>
+                    <div class="note-text">${escapeHtml(msg.text || "")}</div>
                     ${commentsHtml}
                     <div class="note-footer">
                         <div class="footer-left">
-                            <button class="like-btn ${hasLiked ? 'like-active' : ''}" onclick="toggleLike(${msg.id})">
-                                ${hasLiked ? '❤️' : '🤍'} ${likesCount}
+                            <button class="like-btn ${hasLiked ? "like-active" : ""}" onclick="toggleLike('${msg.id}')">
+                                ${hasLiked ? "❤️" : "🤍"} ${likesCount}
                             </button>
-                            <button class="comment-trigger" onclick="addComment(${msg.id})">
+                            <button class="comment-trigger" onclick="addComment('${msg.id}')">
                                 💬 ${commentsCount}
                             </button>
                         </div>
                         ${actionHtml}
                     </div>
                 `;
-                
-                makeDraggable(note, msg.id);
+
+                makeDraggable(note, msg.id, msg.rotation || 0);
                 board.appendChild(note);
             });
         }
 
-        function deleteMessage(id) {
-            if (confirm("确定要删除这条留言吗？")) {
-                messages = messages.filter(msg => msg.id !== id);
-                saveData();
-                renderMessages();
-            }
-        }
-
-        function editMessage(id) {
-            const newText = prompt("修改留言内容：");
-            if (newText && newText.trim()) {
-                const msg = messages.find(m => m.id === id);
-                if (msg) {
-                    msg.text = newText.trim();
-                    saveData();
-                    renderMessages();
-                }
-            }
-        }
-
-        function saveData() {
-            localStorage.setItem('color_messages_v4', JSON.stringify(messages));
-        }
-
-        function makeDraggable(element, messageId) {
+        function makeDraggable(element, messageId, rotation) {
             let isDragging = false;
             let startX, startY, initialLeft, initialTop;
 
-            element.addEventListener('mousedown', dragStart);
-            element.addEventListener('touchstart', dragStart, { passive: false });
+            element.addEventListener("mousedown", dragStart);
+            element.addEventListener("touchstart", dragStart, { passive: false });
 
             function dragStart(e) {
-                if (e.target.closest('button') || e.target.closest('.comments-section')) return;
+                if (e.target.closest("button") || e.target.closest(".comments-section")) return;
 
                 isDragging = true;
                 element.style.zIndex = 1000;
                 element.style.transform = "scale(1.05) rotate(0deg)";
 
-                if (e.type === 'touchstart') {
+                if (e.type === "touchstart") {
                     startX = e.touches[0].clientX;
                     startY = e.touches[0].clientY;
                 } else {
@@ -505,18 +574,18 @@
                 initialLeft = element.offsetLeft;
                 initialTop = element.offsetTop;
 
-                document.addEventListener('mousemove', drag);
-                document.addEventListener('touchmove', drag, { passive: false });
-                document.addEventListener('mouseup', dragEnd);
-                document.addEventListener('touchend', dragEnd);
+                document.addEventListener("mousemove", drag);
+                document.addEventListener("touchmove", drag, { passive: false });
+                document.addEventListener("mouseup", dragEnd);
+                document.addEventListener("touchend", dragEnd);
             }
 
             function drag(e) {
                 if (!isDragging) return;
-                if (e.type === 'touchmove') e.preventDefault();
+                if (e.type === "touchmove") e.preventDefault();
 
                 let currentX, currentY;
-                if (e.type === 'touchmove') {
+                if (e.type === "touchmove") {
                     currentX = e.touches[0].clientX;
                     currentY = e.touches[0].clientY;
                 } else {
@@ -524,42 +593,44 @@
                     currentY = e.clientY;
                 }
 
-                let dx = currentX - startX;
-                let dy = currentY - startY;
+                const dx = currentX - startX;
+                const dy = currentY - startY;
 
-                element.style.left = (initialLeft + dx) + 'px';
-                element.style.top = (initialTop + dy) + 'px';
+                element.style.left = (initialLeft + dx) + "px";
+                element.style.top = (initialTop + dy) + "px";
             }
 
             function dragEnd() {
                 if (!isDragging) return;
                 isDragging = false;
-                
-                element.style.zIndex = '';
-                const msg = messages.find(m => m.id === messageId);
-                if (msg) element.style.transform = `rotate(${msg.rotation}deg)`;
 
-                document.removeEventListener('mousemove', drag);
-                document.removeEventListener('touchmove', drag);
-                document.removeEventListener('mouseup', dragEnd);
-                document.removeEventListener('touchend', dragEnd);
+                element.style.zIndex = "";
+                element.style.transform = `rotate(${rotation}deg)`;
 
-                if (msg) {
-                    msg.left = element.style.left;
-                    msg.top = element.style.top;
-                    saveData();
-                }
+                document.removeEventListener("mousemove", drag);
+                document.removeEventListener("touchmove", drag);
+                document.removeEventListener("mouseup", dragEnd);
+                document.removeEventListener("touchend", dragEnd);
+
+                messagesRef.child(messageId).update({
+                    left: element.style.left,
+                    top: element.style.top
+                });
             }
         }
 
         function escapeHtml(str) {
             return String(str)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
         }
+
+        window.onclick = function (event) {
+            if (event.target === modal) closeModal();
+        };
     </script>
 </body>
 </html>
